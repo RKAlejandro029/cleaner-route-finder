@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import CsvUploader from "@/components/CsvUploader";
+import Launch27Loader from "@/components/Launch27Loader";
 import DateSelector from "@/components/DateSelector";
 import AddressSearch from "@/components/AddressSearch";
 import RouteMap from "@/components/RouteMap";
@@ -11,7 +11,6 @@ import { Booking, GeoPoint } from "@/types/booking";
 import { CleanerRoute, RouteStop } from "@/types/route";
 import { RankedCandidate, InsertionCandidate } from "@/types/recommendation";
 import { ClientRoutingProvider } from "@/lib/routing/ClientRoutingProvider";
-import { buildRoutesForDate } from "@/lib/route-analysis/buildRoutes";
 import { rankInsertionsAcrossRoutes } from "@/lib/route-analysis/insertion";
 
 export default function Home() {
@@ -23,6 +22,7 @@ export default function Home() {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [routes, setRoutes] = useState<CleanerRoute[]>([]);
   const [loadingRoutes, setLoadingRoutes] = useState(false);
+  const [cacheInfo, setCacheInfo] = useState<{ cached: number; total: number } | null>(null);
 
   const [newAddress, setNewAddress] = useState<string | null>(null);
   const [newLocation, setNewLocation] = useState<GeoPoint | null>(null);
@@ -55,12 +55,19 @@ export default function Home() {
     if (!allBookings) return;
     setLoadingRoutes(true);
     try {
-      const { routes } = await buildRoutesForDate(
-        allBookings,
-        date,
-        routingProviderRef.current
-      );
-      setRoutes(routes);
+      const res = await fetch("/api/routes/day", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date, bookings: allBookings }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error ?? "Unable to build routes for this date.");
+      }
+      const data = await res.json();
+      setRoutes(data.routes);
+      const cachedCount = data.routes.filter((r: CleanerRoute & { fromCache?: boolean }) => r.fromCache).length;
+      setCacheInfo({ cached: cachedCount, total: data.routes.length });
     } finally {
       setLoadingRoutes(false);
     }
@@ -165,7 +172,7 @@ export default function Home() {
       </header>
 
       <section className="bg-white border-b border-gray-200 px-4 sm:px-6 py-4 space-y-4">
-        <CsvUploader
+        <Launch27Loader
           onLoaded={(bookings) => {
             setAllBookings(bookings);
             setSelectedDate(null);
@@ -219,6 +226,14 @@ export default function Home() {
               <p className="text-sm text-gray-500">Loading routes…</p>
             )}
 
+            {!loadingRoutes && cacheInfo && cacheInfo.total > 0 && (
+              <p className="text-xs text-gray-400">
+                {cacheInfo.cached > 0
+                  ? `${cacheInfo.cached}/${cacheInfo.total} routes reused from cache (schedule unchanged)`
+                  : `${cacheInfo.total} routes freshly calculated`}
+              </p>
+            )}
+
             {!loadingRoutes && !candidates && (
               <p className="text-sm text-gray-500">
                 Enter a new cleaning location above and click Find Best Cleaner.
@@ -252,7 +267,7 @@ export default function Home() {
 
       {!allBookings && (
         <div className="flex-1 flex items-center justify-center p-8">
-          <p className="text-gray-400 text-sm">Upload a Launch27 export to get started.</p>
+          <p className="text-gray-400 text-sm">Load your Launch27 schedule to get started.</p>
         </div>
       )}
     </main>

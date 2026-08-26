@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { OpenRouteServiceProvider } from "@/lib/routing/OpenRouteServiceProvider";
+import { buildRoutingProviderChain } from "@/lib/routing/providerChain";
 
 export const runtime = "nodejs";
 
 function getProvider() {
-  return new OpenRouteServiceProvider(process.env.OPENROUTESERVICE_API_KEY);
+  return buildRoutingProviderChain();
 }
 
 // GET /api/geocode?q=partial+address  -> autocomplete suggestions

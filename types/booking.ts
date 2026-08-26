@@ -21,6 +21,12 @@ export type Booking = {
   status: string;
   /** Full single-line address used for geocoding */
   fullAddress: string;
+  /**
+   * If the data source already knows the coordinates (e.g. Launch27's API
+   * returns lat/lng directly), set this to skip the geocode API call
+   * entirely for this booking. CSV-sourced bookings leave this undefined.
+   */
+  presetLocation?: GeoPoint;
 };
 
 export type GeoPoint = {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { OpenRouteServiceProvider } from "@/lib/routing/OpenRouteServiceProvider";
+import { buildRoutingProviderChain } from "@/lib/routing/providerChain";
 import { GeoPoint } from "@/types/booking";
 
 export const runtime = "nodejs";
@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const provider = new OpenRouteServiceProvider(process.env.OPENROUTESERVICE_API_KEY);
+    const provider = buildRoutingProviderChain();
     const result = await provider.route(points);
     return NextResponse.json(result);
   } catch (err) {

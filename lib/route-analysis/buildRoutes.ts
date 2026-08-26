@@ -27,7 +27,10 @@ export async function buildRoutesForDate(
   await Promise.all(
     dayBookings.map(async (booking) => {
       try {
-        const location = await routingProvider.geocode(booking.fullAddress);
+        // Launch27-sourced bookings already carry coordinates — skip the
+        // geocode API call entirely and save quota. CSV-sourced bookings
+        // don't have this and fall through to the normal geocode call.
+        const location = booking.presetLocation ?? (await routingProvider.geocode(booking.fullAddress));
         geocoded.push({ ...booking, location });
       } catch {
         geocodeFailures.push(booking);

@@ -4,25 +4,78 @@ A read-only route analysis tool: given a date and a new, unassigned cleaning
 address, it recommends which existing cleaner/team route can absorb the
 property with the least additional driving.
 
-It never reads from or writes to Launch27 — you manually export a CSV from
-Launch27 and upload it here for a single working session.
+It reads your live schedule directly from the Launch27/Automaid API — no
+CSV export needed. It never writes to Launch27: no bookings are created,
+edited, or assigned through this app.
 
 ## What this is NOT
 
-No login, no database, no CRM, no scheduling, no Launch27 API integration,
-no automatic assignment. Refresh the page and everything resets — that's
-intentional (see the build spec in the project for the full rationale).
+No login for you (the app logs in with a dedicated staff account), no
+database, no CRM, no scheduling, no automatic assignment. Refresh the page
+and everything resets except the schedule itself, which reloads from
+Launch27 fresh.
 
 ## Local setup
 
 ```bash
 npm install
 cp .env.example .env.local
-# edit .env.local and add your OpenRouteService key
+# edit .env.local — add your Launch27 staff credentials and at least
+# OPENROUTESERVICE_API_KEY
 npm run dev
 ```
 
-Open http://localhost:3000.
+Open http://localhost:3000, click **Load Schedule**.
+
+## Launch27 setup
+
+You need OFFICE STAFF credentials for this — not a customer login. The
+app calls `POST /login`, and the response's `type` field must be
+`Tenant::Admin` or `Tenant::Staff`; anything else (e.g. `Tenant::Customer`)
+will be rejected before it ever reaches `/staff/bookings`.
+
+```
+LAUNCH27_SUBDOMAIN=leblanccleaning   # from https://leblanccleaning.launch27.com
+LAUNCH27_EMAIL=staff@example.com
+LAUNCH27_PASSWORD=your_staff_password
+```
+
+**2FA note:** if this staff account has two-factor authentication turned
+on, `POST /login` will ask for a 6-digit OTP on top of the password. Since
+this app logs in automatically with no human to type a fresh code each
+time, a real TOTP-based 2FA won't work here — you'll need either a
+dedicated service account with 2FA off, or to disable 2FA on this specific
+account.
+
+**What gets skipped automatically:** Launch27's API already returns
+latitude/longitude on every booking's address, so this app skips
+geocoding those addresses entirely — only the new property you type in
+each search needs to be geocoded. This meaningfully cuts your daily
+OpenRouteService/GraphHopper usage compared to the old CSV flow.
+
+**Date range:** by default the app loads the next 60 days of bookings
+(paginating through Launch27's 100-per-request limit automatically). To
+change that window, edit the `defaultRange()` function in
+`components/Launch27Loader.tsx` and `app/api/launch27/bookings/route.ts`.
+
+## Routing provider fallback chain
+
+Every geocode/autocomplete/route request tries providers in this order,
+falling through automatically on error or quota exhaustion:
+
+1. **OpenRouteService** (primary) — free, no card required
+2. **GraphHopper** (fallback) — free tier, no card required
+3. **Mapbox** (last resort) — free tier, requires a card on file
+
+Only `OPENROUTESERVICE_API_KEY` is required to run the app. Adding
+`GRAPHHOPPER_API_KEY` and/or `MAPBOX_ACCESS_TOKEN` is optional but
+recommended once you're using this daily. Any provider missing its key is
+simply skipped, so the app works fine with just one, two, or all three
+configured.
+
+The map display (OpenFreeMap) is unrelated to this chain — it's just
+tiles/roads for the visual background and doesn't count against any of
+these quotas.
 
 ## Getting an OpenRouteService API key
 
@@ -30,9 +83,22 @@ Open http://localhost:3000.
 2. Create a token (the free tier is plenty for this tool)
 3. Put it in `.env.local` as `OPENROUTESERVICE_API_KEY`
 
-The key is only ever read server-side, inside `app/api/geocode` and
-`app/api/route`. The browser calls those two endpoints and never sees the
-key.
+## Getting a GraphHopper API key (optional, recommended)
+
+1. Sign up free at https://www.graphhopper.com/dashboard/#/register
+2. Create an API key from the dashboard
+3. Put it in `.env.local` as `GRAPHHOPPER_API_KEY`
+
+## Getting a Mapbox access token (optional)
+
+1. Sign up at https://account.mapbox.com/auth/signup/ (may require a
+   card, even for the free tier — this has changed over time, check at
+   signup)
+2. Copy your default public token, or create a new one
+3. Put it in `.env.local` as `MAPBOX_ACCESS_TOKEN`
+
+All keys/credentials are only ever read server-side, inside `app/api/*`
+routes. The browser never sees any of them.
 
 ## Deploying to Vercel
 
@@ -45,9 +111,7 @@ key.
 
 ## Using it
 
-1. Upload the Launch27 CSV export (columns: Date, Time, Address, City,
-   State, Postal Code, Teams Assigned, Duration, Booking ID, Booking
-   Status)
+1. Click **Load Schedule** (pulls the next 60 days from Launch27)
 2. Pick a date
 3. Type or select a new Arizona address
 4. Click **Find Best Cleaner**
@@ -62,15 +126,17 @@ Nothing is ever sent to Launch27. The recommendation is informational only
 
 ```
 app/
-  page.tsx              main UI + state orchestration
-  api/geocode/route.ts   server-side geocode + autocomplete (holds ORS key)
-  api/route/route.ts     server-side road routing (holds ORS key)
-components/              CsvUploader, DateSelector, AddressSearch, RouteMap,
-                          BestFitCard, CleanerResults
+  page.tsx                      main UI + state orchestration
+  api/geocode/route.ts           server-side geocode + autocomplete (fallback chain)
+  api/route/route.ts             server-side road routing (fallback chain)
+  api/launch27/bookings/route.ts server-side Launch27 proxy (holds staff credentials)
+components/                      Launch27Loader, DateSelector, AddressSearch, RouteMap,
+                                  BestFitCard, CleanerResults
 lib/
-  csv/                   CSV parsing, validation, status filtering, team parsing
-  data-source/            BookingDataSource abstraction (CSV now, Launch27 later)
-  routing/                RoutingProvider abstraction (client + ORS implementations)
+  launch27/                      Launch27 API client, timezone-aware booking mapping
+  csv/                           CSV parsing (kept as an unused fallback path — see below)
+  data-source/                   BookingDataSource abstraction (Launch27 now, CSV available)
+  routing/                       RoutingProvider abstraction (client + 3-provider fallback chain)
   route-analysis/         route building, ordering, the insertion algorithm, colors
 types/                    Booking, CleanerRoute, Recommendation, etc.
 ```
@@ -83,3 +149,54 @@ types/                    Booking, CleanerRoute, Recommendation, etc.
   same `RoutingProvider` interface.
 - Improve `lib/route-analysis/routeOrdering.ts` with a smarter/road-based
   ordering strategy without touching the insertion algorithm.
+
+## Google Sheets route cache (optional, recommended)
+
+Without this, every time a date is loaded, the app re-fetches full-day
+road-network geometry for every team from scratch — even if that day's
+schedule hasn't changed since the last time anyone loaded it. This cache
+fixes that: it stores each team's route (keyed by date + a fingerprint of
+that day's booking IDs) in a Google Sheet, and reuses it automatically
+whenever the fingerprint still matches. If a job is added, removed, or
+reassigned, the fingerprint changes and that team re-routes fresh.
+
+This only caches the *baseline day routes* shown on the map — "Find Best
+Cleaner" searches always run fresh, since a new address is different
+every time and isn't worth caching.
+
+### Setup
+
+1. In Google Cloud Console, create a project (or use an existing one) and
+   enable the **Google Sheets API**
+2. Create a **Service Account** (IAM & Admin → Service Accounts), then
+   create and download a JSON key for it
+3. From that downloaded JSON:
+   - `client_email` → `GOOGLE_SERVICE_ACCOUNT_EMAIL`
+   - `private_key` → `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY`
+4. Create a new Google Sheet. Add a tab named **exactly** `RouteCache`
+   (case-sensitive)
+5. Share that Sheet with the service account's email as an **Editor** —
+   service accounts don't have their own Drive storage, they only see
+   sheets explicitly shared with them
+6. Copy the spreadsheet ID from its URL —
+   `https://docs.google.com/spreadsheets/d/THIS_PART/edit` — into
+   `GOOGLE_SHEETS_ID`
+
+### Testing it before deploying
+
+Run `test-google-sheets.js` (a standalone script, no relation to the
+Next.js app) locally with those three env vars set, to confirm auth and
+read/write work before relying on it:
+
+```bash
+node test-google-sheets.js
+```
+
+**A note on the private key in Vercel:** service account private keys are
+multi-line PEM strings. When pasting into Vercel's environment variable
+UI, either paste it with real newlines (Vercel's textarea supports this)
+or with literal `\n` — the app handles both automatically.
+
+**If Sheets is unreachable or misconfigured**, the app doesn't break —
+it just treats every lookup as a cache miss and routes fresh, same as if
+this feature weren't configured at all.
