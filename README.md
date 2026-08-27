@@ -25,7 +25,7 @@ cp .env.example .env.local
 npm run dev
 ```
 
-Open http://localhost:3000, click **Load Schedule**.
+Open http://localhost:3000, pick a date, click **Load Day**.
 
 ## Launch27 setup
 
@@ -53,10 +53,12 @@ geocoding those addresses entirely — only the new property you type in
 each search needs to be geocoded. This meaningfully cuts your daily
 OpenRouteService/GraphHopper usage compared to the old CSV flow.
 
-**Date range:** by default the app loads the next 60 days of bookings
-(paginating through Launch27's 100-per-request limit automatically). To
-change that window, edit the `defaultRange()` function in
-`components/Launch27Loader.tsx` and `app/api/launch27/bookings/route.ts`.
+**Loading:** the app fetches exactly one date at a time — you pick a date
+and click **Load Day**, and only that day's bookings are requested from
+Launch27 (via `from=X&to=X`, the only query shape confirmed to reliably
+filter by date; Launch27's own `?date=` parameter has been observed to
+return unrelated results). This keeps every Launch27 API call small and
+avoids pulling a wide date range you may not need.
 
 ## Routing provider fallback chain
 
@@ -111,11 +113,10 @@ routes. The browser never sees any of them.
 
 ## Using it
 
-1. Click **Load Schedule** (pulls the next 60 days from Launch27)
-2. Pick a date
-3. Type or select a new Arizona address
-4. Click **Find Best Cleaner**
-5. Review the best-fit route and alternatives, drag the yellow marker if
+1. Pick a date and click **Load Day** (fetches just that day from Launch27)
+2. Type or select a new Arizona address
+3. Click **Find Best Cleaner**
+4. Review the best-fit route and alternatives, drag the yellow marker if
    needed, and optionally **Add to Temporary Route** to keep evaluating
    more new properties against the same day
 
@@ -130,7 +131,7 @@ app/
   api/geocode/route.ts           server-side geocode + autocomplete (fallback chain)
   api/route/route.ts             server-side road routing (fallback chain)
   api/launch27/bookings/route.ts server-side Launch27 proxy (holds staff credentials)
-components/                      Launch27Loader, DateSelector, AddressSearch, RouteMap,
+components/                      DayLoader, AddressSearch, RouteMap,
                                   BestFitCard, CleanerResults
 lib/
   launch27/                      Launch27 API client, timezone-aware booking mapping

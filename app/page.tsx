@@ -1,8 +1,7 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
-import Launch27Loader from "@/components/Launch27Loader";
-import DateSelector from "@/components/DateSelector";
+import { useRef, useState } from "react";
+import DayLoader from "@/components/DayLoader";
 import AddressSearch from "@/components/AddressSearch";
 import RouteMap from "@/components/RouteMap";
 import BestFitCard from "@/components/BestFitCard";
@@ -18,10 +17,11 @@ export default function Home() {
   // internal geocode/route caches persist across searches.
   const routingProviderRef = useRef(new ClientRoutingProvider());
 
-  const [allBookings, setAllBookings] = useState<Booking[] | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [dayBookingCount, setDayBookingCount] = useState<number | null>(null);
   const [routes, setRoutes] = useState<CleanerRoute[]>([]);
   const [loadingRoutes, setLoadingRoutes] = useState(false);
+  const [routesError, setRoutesError] = useState<string | null>(null);
   const [cacheInfo, setCacheInfo] = useState<{ cached: number; total: number } | null>(null);
 
   const [newAddress, setNewAddress] = useState<string | null>(null);
@@ -34,31 +34,29 @@ export default function Home() {
   const [selectedTeamKey, setSelectedTeamKey] = useState<string | null>(null);
   const [addingTemp, setAddingTemp] = useState(false);
 
-  const availableDates = useMemo(() => {
-    if (!allBookings) return [];
-    return [...new Set(allBookings.map((b) => b.date))].sort();
-  }, [allBookings]);
-
-  function resetForNewDate(date: string) {
+  // Called once DayLoader has already fetched just this date's bookings
+  // from Launch27 (from=to=date — the only reliably-filtered query shape).
+  async function handleDayLoaded(date: string, bookings: Booking[]) {
     setSelectedDate(date);
+    setDayBookingCount(bookings.length);
     setNewAddress(null);
     setNewLocation(null);
     setAddressAdjusted(false);
     setCandidates(null);
     setFindError(null);
     setSelectedTeamKey(null);
+    setRoutesError(null);
     setRoutes([]);
-    void loadRoutesForDate(date);
-  }
+    setCacheInfo(null);
 
-  async function loadRoutesForDate(date: string) {
-    if (!allBookings) return;
+    if (bookings.length === 0) return;
+
     setLoadingRoutes(true);
     try {
       const res = await fetch("/api/routes/day", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ date, bookings: allBookings }),
+        body: JSON.stringify({ date, bookings }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -68,6 +66,8 @@ export default function Home() {
       setRoutes(data.routes);
       const cachedCount = data.routes.filter((r: CleanerRoute & { fromCache?: boolean }) => r.fromCache).length;
       setCacheInfo({ cached: cachedCount, total: data.routes.length });
+    } catch (err) {
+      setRoutesError(err instanceof Error ? err.message : "Unable to build routes for this date.");
     } finally {
       setLoadingRoutes(false);
     }
@@ -172,28 +172,13 @@ export default function Home() {
       </header>
 
       <section className="bg-white border-b border-gray-200 px-4 sm:px-6 py-4 space-y-4">
-        <Launch27Loader
-          onLoaded={(bookings) => {
-            setAllBookings(bookings);
-            setSelectedDate(null);
-            setRoutes([]);
-            setCandidates(null);
-            setNewAddress(null);
-            setNewLocation(null);
-          }}
-          loadedCount={allBookings?.length ?? null}
-          dateCount={availableDates.length || null}
+        <DayLoader
+          onLoaded={handleDayLoaded}
+          loadedDate={selectedDate}
+          loadedCount={dayBookingCount}
         />
 
-        {allBookings && (
-          <DateSelector
-            availableDates={availableDates}
-            selectedDate={selectedDate}
-            onChange={resetForNewDate}
-          />
-        )}
-
-        {selectedDate && (
+        {selectedDate && dayBookingCount !== null && dayBookingCount > 0 && (
           <AddressSearch
             routingProvider={routingProviderRef.current}
             onFind={handleFind}
@@ -203,13 +188,17 @@ export default function Home() {
         )}
       </section>
 
-      {selectedDate && routes.length === 0 && !loadingRoutes && (
+      {selectedDate && dayBookingCount === 0 && (
         <p className="px-4 sm:px-6 py-6 text-sm text-gray-500">
           No Launch27 bookings found for this date.
         </p>
       )}
 
-      {selectedDate && (loadingRoutes || routes.length > 0) && (
+      {routesError && (
+        <p className="px-4 sm:px-6 py-6 text-sm text-red-600">{routesError}</p>
+      )}
+
+      {selectedDate && dayBookingCount !== null && dayBookingCount > 0 && (loadingRoutes || routes.length > 0) && (
         <div className="flex-1 flex flex-col lg:flex-row min-h-[500px]">
           <div className="flex-1 min-h-[320px] lg:min-h-0 p-4 sm:p-6">
             <RouteMap
@@ -265,9 +254,9 @@ export default function Home() {
         </div>
       )}
 
-      {!allBookings && (
+      {!selectedDate && (
         <div className="flex-1 flex items-center justify-center p-8">
-          <p className="text-gray-400 text-sm">Load your Launch27 schedule to get started.</p>
+          <p className="text-gray-400 text-sm">Pick a date and click Load Day to get started.</p>
         </div>
       )}
     </main>

@@ -1,151 +1,255 @@
-/**
- * Standalone test script for the Launch27/Automaid API — run this LOCALLY
- * against your sandbox before we wire anything into the app.
- *
- * Usage:
- *   node test-launch27.js
- *
- * Set these environment variables first (or edit the CONFIG block below):
- *   LAUNCH27_SUBDOMAIN   e.g. "acme" for acme.launch27.com
- *   LAUNCH27_EMAIL       staff login email
- *   LAUNCH27_PASSWORD    staff login password
- *   LAUNCH27_OTP         (optional) 6-digit 2FA code, only if your account has 2FA on
- *
- * This script does NOT modify or create anything in Launch27 — it only
- * logs in and reads bookings. Safe to run against your sandbox.
- */
-
 const CONFIG = {
-  subdomain: process.env.LAUNCH27_SUBDOMAIN || "leblanccleaning",
-  email: process.env.LAUNCH27_EMAIL || "jana.createandreach@gmail.com",
-  password: process.env.LAUNCH27_PASSWORD || "Cnr@2024",
+  subdomain: process.env.LAUNCH27_SUBDOMAIN,
+  email: process.env.LAUNCH27_EMAIL,
+  password: process.env.LAUNCH27_PASSWORD,
   otp: process.env.LAUNCH27_OTP || undefined,
+
+  targetDate: "2026-08-26",
+  timezone: "America/Phoenix",
 };
 
 function baseUrl() {
   if (!CONFIG.subdomain) {
-    throw new Error("Set LAUNCH27_SUBDOMAIN (e.g. 'acme' for acme.launch27.com)");
+    throw new Error("Set LAUNCH27_SUBDOMAIN first.");
   }
   return `https://${CONFIG.subdomain}.launch27.com/v1`;
 }
 
-async function login() {
-  console.log(`\n1) Logging in as ${CONFIG.email} at ${baseUrl()} ...`);
+function arizonaDate(value) {
+  if (!value) return "";
 
-  const body = { email: CONFIG.email, password: CONFIG.password };
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "";
+
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: CONFIG.timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(d);
+}
+
+async function login() {
+  console.log(`\n1) Logging in as ${CONFIG.email} ...`);
+
+  const body = {
+    email: CONFIG.email,
+    password: CONFIG.password,
+  };
+
   if (CONFIG.otp) body.token = CONFIG.otp;
 
   const res = await fetch(`${baseUrl()}/login`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify(body),
   });
 
   const text = await res.text();
+
   let data;
+
   try {
     data = JSON.parse(text);
   } catch {
-    throw new Error(`Login response wasn't JSON (status ${res.status}): ${text.slice(0, 300)}`);
+    throw new Error(
+      `Login response wasn't JSON (${res.status}): ${text.slice(0, 300)}`
+    );
   }
 
   if (res.status === 403 && data.error === "OTP token is required") {
     throw new Error(
-      "This account has 2FA enabled. Re-run with LAUNCH27_OTP=<6-digit code> set."
+      "2FA is enabled. Set LAUNCH27_OTP=123456 and run again."
     );
   }
 
   if (!res.ok) {
-    throw new Error(`Login failed (${res.status}): ${JSON.stringify(data)}`);
+    throw new Error(
+      `Login failed (${res.status}): ${JSON.stringify(data)}`
+    );
   }
 
   console.log("   ✓ Login succeeded");
   console.log(`   User type: ${data.type}`);
-  console.log(`   User: ${data.first_name ?? ""} ${data.last_name ?? ""} <${data.email}>`);
-
-  if (data.type !== "Tenant::Admin" && data.type !== "Tenant::Staff") {
-    console.log(
-      `   ⚠ WARNING: user type is "${data.type}", not an obvious staff/admin type.`
-    );
-    console.log(
-      "     /staff/bookings may reject this token — if step 2 fails with 401/403,"
-    );
-    console.log("     you likely need office-staff credentials, not a customer login.");
-  }
 
   return data.bearer;
 }
 
-async function fetchStaffBookings(bearer) {
-  const today = new Date().toISOString().slice(0, 10);
-  const in14Days = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
-    .toISOString()
-    .slice(0, 10);
-
-  console.log(`\n2) Fetching staff bookings from ${today} to ${in14Days} ...`);
-
-  const url = `${baseUrl()}/staff/bookings?from=${today}&to=${in14Days}&limit=100`;
-  const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${bearer}` },
-  });
-
-  console.log(`   Rate limit remaining: ${res.headers.get("x-ratelimit-remaining") ?? "n/a"}`);
-
-  const text = await res.text();
-  let data;
-  try {
-    data = JSON.parse(text);
-  } catch {
-    throw new Error(`Bookings response wasn't JSON (status ${res.status}): ${text.slice(0, 300)}`);
+function summarize(bookings) {
+  if (!Array.isArray(bookings)) {
+    return {
+      returned: null,
+      targetCount: null,
+      dates: [],
+      error: "Response was not a booking array",
+    };
   }
 
-  if (!res.ok) {
-    throw new Error(`Fetching bookings failed (${res.status}): ${JSON.stringify(data)}`);
+  const counts = {};
+
+  for (const b of bookings) {
+    const date =
+      arizonaDate(b.service_date) ||
+      "(missing/invalid service_date)";
+
+    counts[date] = (counts[date] || 0) + 1;
   }
 
-  console.log(`   ✓ Got ${data.length} bookings`);
-  return data;
-}
-
-function inspectShape(bookings) {
-  console.log("\n3) Inspecting the shape of the first booking (if any)...\n");
-
-  if (bookings.length === 0) {
-    console.log("   No bookings in this date range — try widening the date range");
-    console.log("   in this script, or check that your sandbox has seed data.");
-    return;
-  }
-
-  const b = bookings[0];
-  console.log("   id:              ", b.id);
-  console.log("   service_date:    ", b.service_date);
-  console.log("   duration:        ", b.duration);
-  console.log("   booking_status:  ", b.booking_status);
-  console.log("   active/completed:", b.active, "/", b.completed);
-  console.log("   address:         ", JSON.stringify(b.address));
-  console.log("   teams:           ", JSON.stringify(b.teams));
-
-  const hasLatLng =
-    b.address && typeof b.address.latitude === "number" && typeof b.address.longitude === "number";
-  console.log(
-    `\n   Has lat/lng on address: ${hasLatLng ? "YES ✓ (great — we can skip geocoding these)" : "NO — we'll need to geocode via ORS as before"}`
+  const target = bookings.filter(
+    b => arizonaDate(b.service_date) === CONFIG.targetDate
   );
 
-  console.log("\n   Full raw JSON of first booking, for reference:\n");
-  console.log(JSON.stringify(b, null, 2));
+  return {
+    returned: bookings.length,
+    targetCount: target.length,
+    dates: Object.entries(counts)
+      .sort()
+      .map(([date, count]) => `${date} (${count})`),
+    targetBookings: target,
+  };
+}
+
+async function testRequest(bearer, label, query) {
+  const url = `${baseUrl()}/staff/bookings?${query}`;
+
+  console.log("\n============================================================");
+  console.log(label);
+  console.log("============================================================");
+  console.log(url);
+
+  try {
+    const res = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${bearer}`,
+        Accept: "application/json",
+      },
+    });
+
+    const text = await res.text();
+
+    let data;
+
+    try {
+      data = JSON.parse(text);
+    } catch {
+      console.log(`HTTP ${res.status}`);
+      console.log(`Non-JSON response: ${text.slice(0, 500)}`);
+      return;
+    }
+
+    console.log(`HTTP: ${res.status}`);
+
+    if (!res.ok) {
+      console.log("ERROR:", JSON.stringify(data));
+      return;
+    }
+
+    const result = summarize(data);
+
+    if (result.error) {
+      console.log(result.error);
+      return;
+    }
+
+    console.log(`Returned: ${result.returned}`);
+
+    console.log(
+      `Bookings whose Arizona service_date = ${CONFIG.targetDate}: ${result.targetCount}`
+    );
+
+    console.log("\nDates returned:");
+
+    for (const date of result.dates) {
+      console.log(`  ${date}`);
+    }
+
+    if (result.targetCount > 0) {
+      console.log(
+        `\n✓ THIS QUERY FOUND ${result.targetCount} BOOKING(S) FOR ${CONFIG.targetDate}`
+      );
+
+      console.log("\nMatching booking IDs:");
+
+      for (const b of result.targetBookings) {
+        console.log(
+          `  ID=${b.id} | service_date=${b.service_date} | ` +
+          `active=${b.active} | completed=${b.completed}`
+        );
+      }
+    }
+  } catch (err) {
+    console.log(`REQUEST ERROR: ${err.message}`);
+  }
 }
 
 async function main() {
   try {
     if (!CONFIG.email || !CONFIG.password) {
       throw new Error(
-        "Set LAUNCH27_EMAIL and LAUNCH27_PASSWORD environment variables first."
+        "Set LAUNCH27_EMAIL and LAUNCH27_PASSWORD first."
       );
     }
+
+    console.log("============================================================");
+    console.log(" Launch27 Date Parameter Test");
+    console.log("============================================================");
+    console.log(`Target date: ${CONFIG.targetDate}`);
+    console.log(`Timezone: ${CONFIG.timezone}`);
+
     const bearer = await login();
-    const bookings = await fetchStaffBookings(bearer);
-    inspectShape(bookings);
-    console.log("\n✅ Test complete. Paste this output back so we can build the real integration.\n");
+
+    // Test 1: existing parameter
+    await testRequest(
+      bearer,
+      "TEST 1 — date",
+      `date=${CONFIG.targetDate}&options=exclude_forecasted`
+    );
+
+    // Test 2: start_date / end_date
+    await testRequest(
+      bearer,
+      "TEST 2 — start_date + end_date",
+      `start_date=${CONFIG.targetDate}&end_date=${CONFIG.targetDate}&options=exclude_forecasted`
+    );
+
+    // Test 3: from / to
+    await testRequest(
+      bearer,
+      "TEST 3 — from + to",
+      `from=${CONFIG.targetDate}&to=${CONFIG.targetDate}&options=exclude_forecasted`
+    );
+
+    // Test 4: start / end
+    await testRequest(
+      bearer,
+      "TEST 4 — start + end",
+      `start=${CONFIG.targetDate}&end=${CONFIG.targetDate}&options=exclude_forecasted`
+    );
+
+    // Test 5: service_date
+    await testRequest(
+      bearer,
+      "TEST 5 — service_date",
+      `service_date=${CONFIG.targetDate}&options=exclude_forecasted`
+    );
+
+    // Test 6: Arizona full-day timestamps
+    await testRequest(
+      bearer,
+      "TEST 6 — Arizona timestamp range",
+      `start_date=${encodeURIComponent(
+        "2026-08-26T00:00:00-07:00"
+      )}&end_date=${encodeURIComponent(
+        "2026-08-26T23:59:59-07:00"
+      )}&options=exclude_forecasted`
+    );
+
+    console.log("\n============================================================");
+    console.log(" Test complete");
+    console.log("============================================================");
+
   } catch (err) {
     console.error("\n❌ Test failed:", err.message);
     process.exit(1);
