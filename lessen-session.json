@@ -1,0 +1,125 @@
+{
+  "cookies": [
+    {
+      "name": "__RequestVerificationToken",
+      "value": "1h7GiiK_o6jUEJy6ZwkIh_COIQvGmFdiRvEfiErqocutDmSLUratelHfJpekcJj6wNth3AnLYkrF4UkULqEC0kRlOjk",
+      "domain": "affiliate-one.lessen.com",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "Strict"
+    },
+    {
+      "name": "ab-features",
+      "value": "1%2C2%2C5%2C6%2C9%2C10%2C22%2C25%2C28%2C32%2C49%2C50%2C100%2C113%2C57%2C59%2C60%2C61%2C63%2C64%2C66%2C68%2C102%2C112%2C118",
+      "domain": "affiliate-one.lessen.com",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "SandboxReportUrl",
+      "value": "http%3A%2F%2Fsandboxconsolelive.smsassist.com",
+      "domain": "affiliate-one.lessen.com",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "isHidePendingAcceptance",
+      "value": "True",
+      "domain": "affiliate-one.lessen.com",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": ".AspNet.ApplicationCookie",
+      "value": "YgMWI_9OW1wuhEYVTt9hahvNxyqLOxOSTYtG0E7Lbnuu6OUJByqnHiWzglfSf98o_aGyUZf5_TDabk3dbFBADE0KvxV00hynwQuXWPas5lJL6xqK-oihWjXdLcFMB5YchFVayHDwlejRbE91MxraI_7cBb8PyV7fKlCbMu5f7xBLF0_ADA80mEa-sHJ3_WV2mVs5UAXGoKt2GuZQzStbKMWtJG_f6mGPadPbroXSuCl7gVwhwjLTmclIZYlTzi7fbx1xntRjSeafNiQmbUz-hfBLOwyOPq4EfG1QtDI8Qw9joLpxMlCqiTMfCfcyXZNElPqPf0lrbYXXpSOR6EdeZ2en5jat-GLxFaxTdr1UubcpRQoqBn3lPR8-glvQuOPvbuFLdJ5amc8KfxKD2hO9k2ZzAP85iu3R4XanSBZ2LO4-rpEw5AaIySj7KtEZhYvK7MwofeVID5wBe8jBfoYfcbRBe9S2Mhfjs7DGAykQr0Qusc07xsuwu8G1roJtIkBSfRP_p_YKpDNH0F7erHStj76fRLTULpL-yJ0JE0dpnzjD-VsYu9JXET2vQlExSxlRlYhzA_OmynpMZSWeL0HUVIqYuJ4M1G4V54UEXk3t6LkJOJAaPPHi9_BU0bwnNKvcDe5E9zMiOYVZBpBH6ZNYZTbfrHprx92f2teFldyciCSFU-RseSvebfwQVnikDqGEtDqiaRPFJIt2U_izUuVuv4T__G2x0svXUKkFRcMl_RIsG9sv9ZvfBSwG1CwHrmsilvlAUYjxoCrytUXZxlUG3_CgPLEJJztmU4fB6PNzgfcJ3aRi3Axxr543QbLZUVDu7kynDv3mF8vhryI1y-JGixLYILdaZHk4zXZ7BB4WYPInTOaZJitWI5v0_2qVQOFJHOVWsP1GmxhOA5sDpsOH7DRe3tn-oDhMuNj3dnibWI-hMv82YnRgVx7s3inhVcnZXhc6qzaCoM6imxDo030FTbHp32ucHCp-uFqcEJm4eMNnSBiBBmaw_wnnqSZ2xFdoTzjidcI4HU7rkNrlrOXyGPOJTpA",
+      "domain": "affiliate-one.lessen.com",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "0294dd006782d896c784c69dd5c7dcbc",
+      "value": "ac72a590-cb88-49f8-8848-82654fccefbf",
+      "domain": "affiliate-one.lessen.com",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": false,
+      "secure": true,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "amp_c427bd",
+      "value": "arxanz6KlgZNUsnbQsO_5y...1k110mgdk.1k110n5jj.1.0.1",
+      "domain": ".lessen.com",
+      "path": "/",
+      "expires": 1822374450.803901,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    }
+  ],
+  "origins": [
+    {
+      "origin": "https://affiliate-one.lessen.com",
+      "localStorage": [
+        {
+          "name": "showOnBoardingModal",
+          "value": "true"
+        },
+        {
+          "name": "LOGIN_VERSION",
+          "value": "2026-08-27T07:07:30.805Z"
+        },
+        {
+          "name": "ATM-affiliateUserName",
+          "value": "Jana Lancero"
+        },
+        {
+          "name": "loginId",
+          "value": "login-1787814426934"
+        },
+        {
+          "name": "amplitude_unsent_c427bd134d68c198fa4af06a4a7d2898_refreshpage",
+          "value": "[{\"device_id\":\"arxanz6KlgZNUsnbQsO_5y\",\"user_id\":null,\"timestamp\":1787814450803,\"event_id\":1,\"session_id\":1787814429108,\"event_type\":\"Login_success\",\"version_name\":null,\"platform\":\"Web\",\"os_name\":\"Chrome\",\"os_version\":\"151\",\"device_model\":\"Windows\",\"device_manufacturer\":null,\"language\":\"en-US\",\"carrier\":null,\"api_properties\":{},\"event_properties\":{\"userId\":\"11321381\",\"affiliateId\":\"130615\",\"affiliateCode\":\"1029309\",\"userName\":\"Jana Lancero\"},\"user_properties\":{},\"uuid\":\"88138099-7748-407a-b7b8-db2b626a109d\",\"library\":{\"name\":\"amplitude-js\",\"version\":\"7.2.1\"},\"sequence_number\":1,\"groups\":{},\"group_properties\":{},\"user_agent\":\"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\"}]"
+        },
+        {
+          "name": "ATM_historyData",
+          "value": "{\"historyFilterData\":{\"affiliateId\":\"\",\"filterData\":{},\"items\":{}},\"isNewLogin\":true,\"orderSortPromptIsShow\":true}"
+        },
+        {
+          "name": "AAC_unsatisfied_count",
+          "value": "0"
+        },
+        {
+          "name": "amplitude_unsent_identify_c427bd134d68c198fa4af06a4a7d2898_refreshpage",
+          "value": "[]"
+        },
+        {
+          "name": "ATM_affiliate_info",
+          "value": "{\"userId\":\"11321381\",\"affiliateId\":\"130615\",\"affiliateCode\":\"1029309\",\"userName\":\"Jana Lancero\"}"
+        },
+        {
+          "name": "AAC_IsRecurringPoolSpaScorecard",
+          "value": "false"
+        },
+        {
+          "name": "HasLessenHistorical",
+          "value": "false"
+        }
+      ]
+    }
+  ]
+}

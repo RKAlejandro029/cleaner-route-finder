@@ -64,17 +64,18 @@ export default function RouteMap({
       markersRef.current.forEach((m) => m.remove());
       markersRef.current = [];
 
-      // Remove any route line layers left over from teams that are no
-      // longer in the current `routes` list (e.g. the isolate-cleaner
-      // filter just hid one, or the day changed).
-      const currentIds = new Set(routes.map((r) => `route-${r.teamKey}`));
+      // Always tear down every previously-drawn route line first, then
+      // rebuild from scratch. This is deliberately not an incremental
+      // update (setData-only) — a prior version tried that and left
+      // stale colors/geometry behind when switching selections, since
+      // setData only patches geometry, not paint properties like color.
+      // Full rebuild is cheap at this scale and eliminates that whole
+      // class of bug.
       routeLayerIdsRef.current.forEach((id) => {
-        if (!currentIds.has(id)) {
-          if (map.getLayer(id)) map.removeLayer(id);
-          if (map.getSource(id)) map.removeSource(id);
-          routeLayerIdsRef.current.delete(id);
-        }
+        if (map.getLayer(id)) map.removeLayer(id);
+        if (map.getSource(id)) map.removeSource(id);
       });
+      routeLayerIdsRef.current.clear();
 
       routes.forEach((route) => {
         route.stops.forEach((stop, idx) => {
@@ -122,9 +123,7 @@ export default function RouteMap({
           geometry: { type: "LineString", coordinates: lineCoords },
         };
 
-        if (map.getSource(sourceId)) {
-          (map.getSource(sourceId) as maplibregl.GeoJSONSource).setData(geoJson);
-        } else if (lineCoords.length >= 2) {
+        if (lineCoords.length >= 2) {
           map.addSource(sourceId, { type: "geojson", data: geoJson });
           map.addLayer({
             id: sourceId,
@@ -164,11 +163,16 @@ export default function RouteMap({
 
     const draw = () => {
       const sourceId = "preview-route";
-      if (!previewGeometry || previewGeometry.length < 2) {
-        if (map.getLayer(sourceId)) map.removeLayer(sourceId);
-        if (map.getSource(sourceId)) map.removeSource(sourceId);
-        return;
-      }
+
+      // Always tear down first — same reasoning as the route-lines
+      // effect above. This is what fixes clicking a second candidate:
+      // previously setData() alone updated the line's position but left
+      // the OLD candidate's color behind, which read as "still showing
+      // the first one" even though it had technically moved.
+      if (map.getLayer(sourceId)) map.removeLayer(sourceId);
+      if (map.getSource(sourceId)) map.removeSource(sourceId);
+
+      if (!previewGeometry || previewGeometry.length < 2) return;
 
       const geoJson: GeoJSON.Feature = {
         type: "Feature",
@@ -179,21 +183,17 @@ export default function RouteMap({
         },
       };
 
-      if (map.getSource(sourceId)) {
-        (map.getSource(sourceId) as maplibregl.GeoJSONSource).setData(geoJson);
-      } else {
-        map.addSource(sourceId, { type: "geojson", data: geoJson });
-        map.addLayer({
-          id: sourceId,
-          type: "line",
-          source: sourceId,
-          paint: {
-            "line-color": previewColor ?? "#d946ef",
-            "line-width": 4,
-            "line-dasharray": [1, 1],
-          },
-        });
-      }
+      map.addSource(sourceId, { type: "geojson", data: geoJson });
+      map.addLayer({
+        id: sourceId,
+        type: "line",
+        source: sourceId,
+        paint: {
+          "line-color": previewColor ?? "#d946ef",
+          "line-width": 4,
+          "line-dasharray": [1, 1],
+        },
+      });
     };
 
     if (map.isStyleLoaded()) draw();
