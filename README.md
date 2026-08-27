@@ -116,7 +116,7 @@ routes. The browser never sees any of them.
 1. Pick a date and click **Load Day** (fetches just that day from Launch27)
 2. Type or select a new Arizona address
 3. Click **Find Best Cleaner**
-4. Review the best-fit route and alternatives, drag the yellow marker if
+4. Review the best-fit route and alternatives, drag the new-property marker if
    needed, and optionally **Add to Temporary Route** to keep evaluating
    more new properties against the same day
 
@@ -216,3 +216,18 @@ per assigned cleaner per job.
 The date picker, address search, and results (Best Fit + alternatives)
 all live in a left-hand sidebar. The map fills the remaining space to the
 right. On narrow/mobile screens the sidebar stacks above the map instead.
+
+## Isolating one cleaner on the map
+
+The left sidebar lists every cleaner working that day. Click one to show
+only their route on the map (everyone else fades out); click the same
+one again to bring everyone back. This is purely a map-display filter —
+"Find Best Cleaner" always evaluates every cleaner regardless of what's
+currently isolated on the map.
+
+## Map colors
+
+The route palette and the new-property marker deliberately avoid yellow/
+orange/amber tones, since those colors are already used for roads and
+highways on the base map and would be easy to mistake for a road rather
+than a route.

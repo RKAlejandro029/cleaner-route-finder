@@ -6,6 +6,7 @@ import AddressSearch from "@/components/AddressSearch";
 import RouteMap from "@/components/RouteMap";
 import BestFitCard from "@/components/BestFitCard";
 import CleanerResults from "@/components/CleanerResults";
+import CleanerList from "@/components/CleanerList";
 import { Booking, GeoPoint } from "@/types/booking";
 import { CleanerRoute, RouteStop } from "@/types/route";
 import { RankedCandidate, InsertionCandidate } from "@/types/recommendation";
@@ -26,6 +27,9 @@ export default function Home() {
   const [loadingRoutes, setLoadingRoutes] = useState(false);
   const [routesError, setRoutesError] = useState<string | null>(null);
   const [cacheInfo, setCacheInfo] = useState<{ cached: number; total: number } | null>(null);
+  // Isolate-one-cleaner view for browsing the map, independent from
+  // selectedTeamKey below (which is about previewing a search result).
+  const [focusedTeamKey, setFocusedTeamKey] = useState<string | null>(null);
 
   const [newAddress, setNewAddress] = useState<string | null>(null);
   const [newLocation, setNewLocation] = useState<GeoPoint | null>(null);
@@ -53,6 +57,7 @@ export default function Home() {
     setRoutesError(null);
     setRoutes([]);
     setCacheInfo(null);
+    setFocusedTeamKey(null);
 
     if (bookings.length === 0) return;
 
@@ -162,6 +167,10 @@ export default function Home() {
     setAddingTemp(false);
   }
 
+  function handleToggleFocus(teamKey: string) {
+    setFocusedTeamKey((prev) => (prev === teamKey ? null : teamKey));
+  }
+
   const bestCandidate =
     candidates?.find((c): c is InsertionCandidate => !c.excluded) ?? null;
   const otherCandidates = candidates?.filter((c) => c !== bestCandidate) ?? [];
@@ -169,6 +178,12 @@ export default function Home() {
   const selectedRoute = routes.find((r) => r.teamKey === selectedTeamKey);
   const selectedCandidate =
     candidates?.find((c): c is InsertionCandidate => !c.excluded && c.teamKey === selectedTeamKey) ?? null;
+
+  // The isolate-cleaner filter only affects what's drawn on the map — the
+  // search/insertion algorithm always considers every cleaner regardless.
+  const visibleRoutes = focusedTeamKey
+    ? routes.filter((r) => r.teamKey === focusedTeamKey)
+    : routes;
 
   const hasBookingsForDate = jobCount !== null && jobCount > 0;
 
@@ -210,6 +225,14 @@ export default function Home() {
             </p>
           )}
 
+          {!loadingRoutes && routes.length > 0 && (
+            <CleanerList
+              routes={routes}
+              selectedTeamKey={focusedTeamKey}
+              onToggle={handleToggleFocus}
+            />
+          )}
+
           {selectedDate && hasBookingsForDate && !loadingRoutes && !candidates && (
             <p className="text-sm text-gray-500">
               Enter a new cleaning location above and click Find Best Cleaner.
@@ -243,7 +266,7 @@ export default function Home() {
         <div className="flex-1 min-h-[320px] p-4 sm:p-6">
           {selectedDate && hasBookingsForDate ? (
             <RouteMap
-              routes={routes}
+              routes={visibleRoutes}
               newProperty={newLocation && newAddress ? { location: newLocation, address: newAddress } : null}
               previewGeometry={selectedCandidate?.previewGeometry}
               previewColor={selectedRoute?.color}

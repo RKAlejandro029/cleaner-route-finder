@@ -171,7 +171,7 @@ export default function RouteMap({
           type: "line",
           source: sourceId,
           paint: {
-            "line-color": previewColor ?? "#facc15",
+            "line-color": previewColor ?? "#d946ef",
             "line-width": 4,
             "line-dasharray": [1, 1],
           },
@@ -200,7 +200,7 @@ export default function RouteMap({
       el.style.height = "26px";
       el.style.borderRadius = "50% 50% 50% 0";
       el.style.transform = "rotate(-45deg)";
-      el.style.background = "#facc15";
+      el.style.background = "#d946ef";
       el.style.border = "2px solid white";
       el.style.boxShadow = "0 1px 4px rgba(0,0,0,0.5)";
 
