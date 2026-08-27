@@ -28,6 +28,10 @@ export default function RouteMap({
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef<maplibregl.Marker[]>([]);
   const newMarkerRef = useRef<maplibregl.Marker | null>(null);
+  // Tracks every route-line source/layer ID currently on the map, so we
+  // can remove ones that drop out of `routes` (e.g. isolating a single
+  // cleaner) instead of leaving stale lines behind.
+  const routeLayerIdsRef = useRef<Set<string>>(new Set());
 
   // Initialize map once
   useEffect(() => {
@@ -59,6 +63,18 @@ export default function RouteMap({
     const draw = () => {
       markersRef.current.forEach((m) => m.remove());
       markersRef.current = [];
+
+      // Remove any route line layers left over from teams that are no
+      // longer in the current `routes` list (e.g. the isolate-cleaner
+      // filter just hid one, or the day changed).
+      const currentIds = new Set(routes.map((r) => `route-${r.teamKey}`));
+      routeLayerIdsRef.current.forEach((id) => {
+        if (!currentIds.has(id)) {
+          if (map.getLayer(id)) map.removeLayer(id);
+          if (map.getSource(id)) map.removeSource(id);
+          routeLayerIdsRef.current.delete(id);
+        }
+      });
 
       routes.forEach((route) => {
         route.stops.forEach((stop, idx) => {
@@ -120,6 +136,7 @@ export default function RouteMap({
               "line-opacity": 0.7,
             },
           });
+          routeLayerIdsRef.current.add(sourceId);
         }
       });
 
