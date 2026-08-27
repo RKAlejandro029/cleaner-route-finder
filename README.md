@@ -201,3 +201,18 @@ or with literal `\n` — the app handles both automatically.
 **If Sheets is unreachable or misconfigured**, the app doesn't break —
 it just treats every lookup as a cache miss and routes fresh, same as if
 this feature weren't configured at all.
+
+## Individual cleaner routes, not team routes
+
+Each route is now per INDIVIDUAL cleaner, not per team. If a job has two
+people assigned (e.g. "Gabriel Baldonado & Payton Limon"), that stop
+appears on BOTH of their separate routes — since both of them physically
+go there — rather than being combined into one shared "team" route. This
+happens in `lib/launch27/mapBooking.ts`, which produces one Booking row
+per assigned cleaner per job.
+
+## Layout
+
+The date picker, address search, and results (Best Fit + alternatives)
+all live in a left-hand sidebar. The map fills the remaining space to the
+right. On narrow/mobile screens the sidebar stacks above the map instead.

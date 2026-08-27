@@ -150,7 +150,7 @@ export async function fetchLaunch27Bookings(from: string, to: string): Promise<B
   for (const raw of allRaw) {
     if (raw.active === false) continue; // cancelled — exclude entirely
     const mapped = mapLaunch27Booking(raw, timezone);
-    if (mapped) bookings.push(mapped);
+    bookings.push(...mapped);
   }
 
   return bookings;

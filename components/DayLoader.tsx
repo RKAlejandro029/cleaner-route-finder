@@ -6,14 +6,14 @@ import { Booking } from "@/types/booking";
 type Props = {
   onLoaded: (date: string, bookings: Booking[]) => void;
   loadedDate: string | null;
-  loadedCount: number | null;
+  jobCount: number | null;
 };
 
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-export default function DayLoader({ onLoaded, loadedDate, loadedCount }: Props) {
+export default function DayLoader({ onLoaded, loadedDate, jobCount }: Props) {
   const [date, setDate] = useState(todayIso());
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -65,9 +65,9 @@ export default function DayLoader({ onLoaded, loadedDate, loadedCount }: Props) 
         </button>
       </div>
 
-      {loadedDate === date && loadedCount !== null && loadedCount > 0 && !error && (
+      {loadedDate === date && jobCount !== null && jobCount > 0 && !error && (
         <p className="mt-2 text-sm text-green-700">
-          ✓ {loadedCount} bookings loaded for this date
+          ✓ {jobCount} jobs loaded for this date
         </p>
       )}
 

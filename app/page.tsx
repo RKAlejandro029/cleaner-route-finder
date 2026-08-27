@@ -18,7 +18,10 @@ export default function Home() {
   const routingProviderRef = useRef(new ClientRoutingProvider());
 
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const [dayBookingCount, setDayBookingCount] = useState<number | null>(null);
+  // Distinct job count for display — a 2-cleaner job produces 2 Booking
+  // rows internally (one per individual cleaner's route) but is still one
+  // real job, so the UI should say "1 job", not "2".
+  const [jobCount, setJobCount] = useState<number | null>(null);
   const [routes, setRoutes] = useState<CleanerRoute[]>([]);
   const [loadingRoutes, setLoadingRoutes] = useState(false);
   const [routesError, setRoutesError] = useState<string | null>(null);
@@ -36,9 +39,11 @@ export default function Home() {
 
   // Called once DayLoader has already fetched just this date's bookings
   // from Launch27 (from=to=date — the only reliably-filtered query shape).
+  // `bookings` may contain multiple rows per job (one per assigned
+  // cleaner) — that's intentional, see lib/launch27/mapBooking.ts.
   async function handleDayLoaded(date: string, bookings: Booking[]) {
     setSelectedDate(date);
-    setDayBookingCount(bookings.length);
+    setJobCount(new Set(bookings.map((b) => b.bookingId)).size);
     setNewAddress(null);
     setNewLocation(null);
     setAddressAdjusted(false);
@@ -165,42 +170,78 @@ export default function Home() {
   const selectedCandidate =
     candidates?.find((c): c is InsertionCandidate => !c.excluded && c.teamKey === selectedTeamKey) ?? null;
 
+  const hasBookingsForDate = jobCount !== null && jobCount > 0;
+
   return (
-    <main className="min-h-screen flex flex-col">
-      <header className="border-b border-gray-200 bg-white px-4 sm:px-6 py-4">
+    <main className="h-screen flex flex-col">
+      <header className="border-b border-gray-200 bg-white px-4 sm:px-6 py-3 flex-shrink-0">
         <h1 className="text-xl font-bold">Cleaner Route Finder</h1>
       </header>
 
-      <section className="bg-white border-b border-gray-200 px-4 sm:px-6 py-4 space-y-4">
-        <DayLoader
-          onLoaded={handleDayLoaded}
-          loadedDate={selectedDate}
-          loadedCount={dayBookingCount}
-        />
+      <div className="flex-1 flex flex-col lg:flex-row min-h-0">
+        {/* Left navigation: date, search, and results all live here */}
+        <aside className="w-full lg:w-96 flex-shrink-0 border-b lg:border-b-0 lg:border-r border-gray-200 bg-white p-4 sm:p-6 space-y-4 overflow-y-auto">
+          <DayLoader onLoaded={handleDayLoaded} loadedDate={selectedDate} jobCount={jobCount} />
 
-        {selectedDate && dayBookingCount !== null && dayBookingCount > 0 && (
-          <AddressSearch
-            routingProvider={routingProviderRef.current}
-            onFind={handleFind}
-            busy={finding}
-            error={findError}
-          />
-        )}
-      </section>
+          {selectedDate && hasBookingsForDate && (
+            <AddressSearch
+              routingProvider={routingProviderRef.current}
+              onFind={handleFind}
+              busy={finding}
+              error={findError}
+            />
+          )}
 
-      {selectedDate && dayBookingCount === 0 && (
-        <p className="px-4 sm:px-6 py-6 text-sm text-gray-500">
-          No Launch27 bookings found for this date.
-        </p>
-      )}
+          {selectedDate && jobCount === 0 && (
+            <p className="text-sm text-gray-500">
+              No Launch27 bookings found for this date.
+            </p>
+          )}
 
-      {routesError && (
-        <p className="px-4 sm:px-6 py-6 text-sm text-red-600">{routesError}</p>
-      )}
+          {routesError && <p className="text-sm text-red-600">{routesError}</p>}
 
-      {selectedDate && dayBookingCount !== null && dayBookingCount > 0 && (loadingRoutes || routes.length > 0) && (
-        <div className="flex-1 flex flex-col lg:flex-row min-h-[500px]">
-          <div className="flex-1 min-h-[320px] lg:min-h-0 p-4 sm:p-6">
+          {loadingRoutes && <p className="text-sm text-gray-500">Loading routes…</p>}
+
+          {!loadingRoutes && cacheInfo && cacheInfo.total > 0 && (
+            <p className="text-xs text-gray-400">
+              {cacheInfo.cached > 0
+                ? `${cacheInfo.cached}/${cacheInfo.total} routes reused from cache (schedule unchanged)`
+                : `${cacheInfo.total} routes freshly calculated`}
+            </p>
+          )}
+
+          {selectedDate && hasBookingsForDate && !loadingRoutes && !candidates && (
+            <p className="text-sm text-gray-500">
+              Enter a new cleaning location above and click Find Best Cleaner.
+            </p>
+          )}
+
+          {addressAdjusted && (
+            <p className="text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-2">
+              Location adjusted. Recalculated automatically.
+            </p>
+          )}
+
+          {bestCandidate && (
+            <BestFitCard
+              candidate={bestCandidate}
+              onAddTemporary={() => handleAddTemporary(bestCandidate)}
+              adding={addingTemp}
+            />
+          )}
+
+          {candidates && (
+            <CleanerResults
+              candidates={otherCandidates}
+              onSelect={setSelectedTeamKey}
+              selectedTeamKey={selectedTeamKey}
+            />
+          )}
+        </aside>
+
+        {/* Map fills the remaining space */}
+        <div className="flex-1 min-h-[320px] p-4 sm:p-6">
+          {selectedDate && hasBookingsForDate ? (
             <RouteMap
               routes={routes}
               newProperty={newLocation && newAddress ? { location: newLocation, address: newAddress } : null}
@@ -208,57 +249,15 @@ export default function Home() {
               previewColor={selectedRoute?.color}
               onMarkerDrag={recalculateAfterDrag}
             />
-          </div>
-
-          <aside className="w-full lg:w-96 border-t lg:border-t-0 lg:border-l border-gray-200 bg-white p-4 sm:p-6 space-y-4 overflow-y-auto">
-            {loadingRoutes && (
-              <p className="text-sm text-gray-500">Loading routes…</p>
-            )}
-
-            {!loadingRoutes && cacheInfo && cacheInfo.total > 0 && (
-              <p className="text-xs text-gray-400">
-                {cacheInfo.cached > 0
-                  ? `${cacheInfo.cached}/${cacheInfo.total} routes reused from cache (schedule unchanged)`
-                  : `${cacheInfo.total} routes freshly calculated`}
+          ) : (
+            <div className="w-full h-full flex items-center justify-center rounded-lg bg-gray-100">
+              <p className="text-gray-400 text-sm">
+                Pick a date and click Load Day to get started.
               </p>
-            )}
-
-            {!loadingRoutes && !candidates && (
-              <p className="text-sm text-gray-500">
-                Enter a new cleaning location above and click Find Best Cleaner.
-              </p>
-            )}
-
-            {addressAdjusted && (
-              <p className="text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-2">
-                Location adjusted. Recalculated automatically.
-              </p>
-            )}
-
-            {bestCandidate && (
-              <BestFitCard
-                candidate={bestCandidate}
-                onAddTemporary={() => handleAddTemporary(bestCandidate)}
-                adding={addingTemp}
-              />
-            )}
-
-            {candidates && (
-              <CleanerResults
-                candidates={otherCandidates}
-                onSelect={setSelectedTeamKey}
-                selectedTeamKey={selectedTeamKey}
-              />
-            )}
-          </aside>
+            </div>
+          )}
         </div>
-      )}
-
-      {!selectedDate && (
-        <div className="flex-1 flex items-center justify-center p-8">
-          <p className="text-gray-400 text-sm">Pick a date and click Load Day to get started.</p>
-        </div>
-      )}
+      </div>
     </main>
   );
 }

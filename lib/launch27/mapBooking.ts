@@ -29,56 +29,52 @@ function toLocalTimeString(isoUtc: string, timeZone: string): string {
   }).format(new Date(isoUtc));
 }
 
-function parseTeams(teams: Launch27StaffBooking["teams"]): {
-  teamKey: string;
-  teamLabel: string;
-} {
-  if (!teams || teams.length === 0) {
-    return { teamKey: "unassigned", teamLabel: "Unassigned" };
-  }
-
-  const teamKey = teams
-    .map((t) => String(t.id))
-    .sort()
-    .join("+");
-  const teamLabel = teams.map((t) => t.title).join(" & ");
-
-  return { teamKey, teamLabel };
-}
-
 /**
- * Maps one raw Launch27 staff booking into the app's Booking type.
- * Returns null for bookings that shouldn't participate in routing at all
- * (missing address, or no coordinates) — the caller filters these out.
+ * Maps one raw Launch27 staff booking into ONE Booking entry PER
+ * INDIVIDUAL CLEANER assigned to it — not one combined "team" entry.
+ *
+ * Why: when a job has two people assigned (e.g. "Gabriel Baldonado &
+ * Payton Limon"), both of them physically go to that address. Each
+ * cleaner needs their own separate route, and this stop belongs on BOTH
+ * of their individual route lists — so a 2-person job produces 2 Booking
+ * entries here (same address/location/bookingId, different teamKey),
+ * which downstream grouping (by teamKey) then naturally separates into
+ * two individual routes.
+ *
+ * Returns an empty array for bookings that shouldn't participate in
+ * routing at all (missing address, no coordinates, or no one assigned).
  */
 export function mapLaunch27Booking(
   raw: Launch27StaffBooking,
   timeZone: string
-): Booking | null {
-  if (!raw.address || !raw.address.street) return null;
+): Booking[] {
+  if (!raw.address || !raw.address.street) return [];
   if (
     typeof raw.address.latitude !== "number" ||
     typeof raw.address.longitude !== "number"
   ) {
-    return null;
+    return [];
   }
 
-  const { teamKey, teamLabel } = parseTeams(raw.teams);
+  const members = raw.teams && raw.teams.length > 0 ? raw.teams : null;
+  if (!members) return []; // unassigned jobs have no individual cleaner to route
 
-  return {
+  const teamsAssignedRaw = members.map((t) => `${t.id}: ${t.title}`).join(", ");
+
+  return members.map((member) => ({
     bookingId: String(raw.id),
     date: toLocalDateString(raw.service_date, timeZone),
     time: toLocalTimeString(raw.service_date, timeZone),
-    address: raw.address.street,
-    city: raw.address.city,
-    state: raw.address.state,
-    postalCode: raw.address.zip,
-    teamsAssignedRaw: (raw.teams ?? []).map((t) => `${t.id}: ${t.title}`).join(", "),
-    teamKey,
-    teamLabel,
+    address: raw.address!.street,
+    city: raw.address!.city,
+    state: raw.address!.state,
+    postalCode: raw.address!.zip,
+    teamsAssignedRaw,
+    teamKey: String(member.id),
+    teamLabel: member.title,
     duration: raw.duration,
     status: raw.booking_status,
-    fullAddress: raw.address.full_address,
-    presetLocation: { lat: raw.address.latitude, lng: raw.address.longitude },
-  };
+    fullAddress: raw.address!.full_address,
+    presetLocation: { lat: raw.address!.latitude, lng: raw.address!.longitude },
+  }));
 }
