@@ -27,9 +27,6 @@ export default function Home() {
   const [loadingRoutes, setLoadingRoutes] = useState(false);
   const [routesError, setRoutesError] = useState<string | null>(null);
   const [cacheInfo, setCacheInfo] = useState<{ cached: number; total: number } | null>(null);
-  // Isolate-one-cleaner view for browsing the map, independent from
-  // selectedTeamKey below (which is about previewing a search result).
-  const [focusedTeamKey, setFocusedTeamKey] = useState<string | null>(null);
 
   const [newAddress, setNewAddress] = useState<string | null>(null);
   const [newLocation, setNewLocation] = useState<GeoPoint | null>(null);
@@ -38,6 +35,11 @@ export default function Home() {
   const [candidates, setCandidates] = useState<RankedCandidate[] | null>(null);
   const [findError, setFindError] = useState<string | null>(null);
   const [finding, setFinding] = useState(false);
+  // Single selection driving BOTH: which cleaner's route is isolated on
+  // the map, and (when that cleaner is among the current search results)
+  // which candidate's insertion preview line is shown. Clicking a cleaner
+  // anywhere — the "Cleaners Today" list or the "Other Options" results
+  // list — sets this same value, so the two views always stay in sync.
   const [selectedTeamKey, setSelectedTeamKey] = useState<string | null>(null);
   const [addingTemp, setAddingTemp] = useState(false);
 
@@ -57,7 +59,6 @@ export default function Home() {
     setRoutesError(null);
     setRoutes([]);
     setCacheInfo(null);
-    setFocusedTeamKey(null);
 
     if (bookings.length === 0) return;
 
@@ -167,8 +168,8 @@ export default function Home() {
     setAddingTemp(false);
   }
 
-  function handleToggleFocus(teamKey: string) {
-    setFocusedTeamKey((prev) => (prev === teamKey ? null : teamKey));
+  function handleToggleSelection(teamKey: string) {
+    setSelectedTeamKey((prev) => (prev === teamKey ? null : teamKey));
   }
 
   const bestCandidate =
@@ -179,10 +180,11 @@ export default function Home() {
   const selectedCandidate =
     candidates?.find((c): c is InsertionCandidate => !c.excluded && c.teamKey === selectedTeamKey) ?? null;
 
-  // The isolate-cleaner filter only affects what's drawn on the map — the
-  // search/insertion algorithm always considers every cleaner regardless.
-  const visibleRoutes = focusedTeamKey
-    ? routes.filter((r) => r.teamKey === focusedTeamKey)
+  // Selecting a cleaner (from either list) isolates their route on the
+  // map. The search/insertion algorithm always considers every cleaner
+  // regardless of what's currently isolated.
+  const visibleRoutes = selectedTeamKey
+    ? routes.filter((r) => r.teamKey === selectedTeamKey)
     : routes;
 
   const hasBookingsForDate = jobCount !== null && jobCount > 0;
@@ -228,8 +230,8 @@ export default function Home() {
           {!loadingRoutes && routes.length > 0 && (
             <CleanerList
               routes={routes}
-              selectedTeamKey={focusedTeamKey}
-              onToggle={handleToggleFocus}
+              selectedTeamKey={selectedTeamKey}
+              onToggle={handleToggleSelection}
             />
           )}
 
@@ -256,7 +258,7 @@ export default function Home() {
           {candidates && (
             <CleanerResults
               candidates={otherCandidates}
-              onSelect={setSelectedTeamKey}
+              onSelect={handleToggleSelection}
               selectedTeamKey={selectedTeamKey}
             />
           )}
