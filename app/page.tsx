@@ -3,13 +3,16 @@
 import { useRef, useState } from "react";
 import DayLoader from "@/components/DayLoader";
 import AddressSearch from "@/components/AddressSearch";
-import RouteMap from "@/components/RouteMap";
+import RouteMap, { ExtraPin } from "@/components/RouteMap";
 import BestFitCard from "@/components/BestFitCard";
 import CleanerResults from "@/components/CleanerResults";
 import CleanerList from "@/components/CleanerList";
+import LessenLayer from "@/components/LessenLayer";
 import { Booking, GeoPoint } from "@/types/booking";
 import { CleanerRoute, RouteStop } from "@/types/route";
 import { RankedCandidate, InsertionCandidate } from "@/types/recommendation";
+import { LessenTask } from "@/types/lessen";
+import { colorForTaskType } from "@/lib/lessen/taskTypeColors";
 import { ClientRoutingProvider } from "@/lib/routing/ClientRoutingProvider";
 import { rankInsertionsAcrossRoutes } from "@/lib/route-analysis/insertion";
 
@@ -42,6 +45,9 @@ export default function Home() {
   // list — sets this same value, so the two views always stay in sync.
   const [selectedTeamKey, setSelectedTeamKey] = useState<string | null>(null);
   const [addingTemp, setAddingTemp] = useState(false);
+
+  const [visibleLessenTasks, setVisibleLessenTasks] = useState<LessenTask[]>([]);
+  const [prefillAddress, setPrefillAddress] = useState<string | null>(null);
 
   // Called once DayLoader has already fetched just this date's bookings
   // from Launch27 (from=to=date — the only reliably-filtered query shape).
@@ -189,6 +195,24 @@ export default function Home() {
 
   const hasBookingsForDate = jobCount !== null && jobCount > 0;
 
+  const extraPins: ExtraPin[] = visibleLessenTasks
+    .filter((t) => t.location)
+    .map((t) => ({
+      id: t.woId,
+      label: `[${t.taskTypeName}] ${t.address}, ${t.city} — ${t.clientName}`,
+      location: t.location!,
+      color: colorForTaskType(t.taskTypeId),
+    }));
+
+  function handleExtraPinClick(pin: ExtraPin) {
+    const task = visibleLessenTasks.find((t) => t.woId === pin.id);
+    if (!task) return;
+    const fullAddress = [task.address, task.city, task.state, task.zipCode]
+      .filter(Boolean)
+      .join(", ");
+    setPrefillAddress(fullAddress);
+  }
+
   return (
     <main className="h-screen flex flex-col">
       <header className="border-b border-gray-200 bg-white px-4 sm:px-6 py-3 flex-shrink-0">
@@ -200,12 +224,15 @@ export default function Home() {
         <aside className="w-full lg:w-96 flex-shrink-0 border-b lg:border-b-0 lg:border-r border-gray-200 bg-white p-4 sm:p-6 space-y-4 overflow-y-auto">
           <DayLoader onLoaded={handleDayLoaded} loadedDate={selectedDate} jobCount={jobCount} />
 
+          <LessenLayer onVisibleTasksChange={setVisibleLessenTasks} />
+
           {selectedDate && hasBookingsForDate && (
             <AddressSearch
               routingProvider={routingProviderRef.current}
               onFind={handleFind}
               busy={finding}
               error={findError}
+              prefillAddress={prefillAddress}
             />
           )}
 
@@ -264,23 +291,18 @@ export default function Home() {
           )}
         </aside>
 
-        {/* Map fills the remaining space */}
+        {/* Map fills the remaining space — always rendered, even before
+            any date is loaded, so the app opens on Arizona immediately */}
         <div className="flex-1 min-h-[320px] p-4 sm:p-6">
-          {selectedDate && hasBookingsForDate ? (
-            <RouteMap
-              routes={visibleRoutes}
-              newProperty={newLocation && newAddress ? { location: newLocation, address: newAddress } : null}
-              previewGeometry={selectedCandidate?.previewGeometry}
-              previewColor={selectedRoute?.color}
-              onMarkerDrag={recalculateAfterDrag}
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center rounded-lg bg-gray-100">
-              <p className="text-gray-400 text-sm">
-                Pick a date and click Load Day to get started.
-              </p>
-            </div>
-          )}
+          <RouteMap
+            routes={selectedDate && hasBookingsForDate ? visibleRoutes : []}
+            newProperty={newLocation && newAddress ? { location: newLocation, address: newAddress } : null}
+            previewGeometry={selectedCandidate?.previewGeometry}
+            previewColor={selectedRoute?.color}
+            onMarkerDrag={recalculateAfterDrag}
+            extraPins={extraPins}
+            onExtraPinClick={handleExtraPinClick}
+          />
         </div>
       </div>
     </main>

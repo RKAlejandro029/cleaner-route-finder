@@ -231,3 +231,52 @@ The route palette and the new-property marker deliberately avoid yellow/
 orange/amber tones, since those colors are already used for roads and
 highways on the base map and would be easy to mistake for a road rather
 than a route.
+
+
+## Lessen dispatch pins (optional)
+
+Shows unscheduled/problem dispatch tasks from Lessen (Pending Vendor
+Acceptance, Missed Check In, Return Trip Needed, etc.) as toggleable pins
+on the map, alongside your scheduled Launch27 routes. Click a pin to
+prefill its address into the search bar, then run Find Best Cleaner
+against it exactly like any other new property.
+
+**This works exactly like the Launch27 integration** — no browser
+automation, no scheduled sync, no GitHub Actions. Lessen's login turned
+out to be a plain HTTP form post (ASP.NET anti-forgery token + a session
+cookie), so `app/api/lessen/tasks` logs in server-side on demand, caches
+the session cookie in memory, and fetches tasks live — the same pattern
+as `lib/launch27/client.ts`.
+
+The only thing cached in Google Sheets is **geocoding results** (address
+→ lat/lng), in a `LessenGeocodeCache` tab, purely to avoid re-geocoding
+the same address every time you check a box. The task data itself is
+always fetched fresh.
+
+### Setup
+
+1. Add `LESSEN_EMAIL` and `LESSEN_PASSWORD` to your `.env.local` and to
+   Vercel's environment variables — same place as your other credentials
+2. Add a new tab to your existing Google Sheet named exactly
+   `LessenGeocodeCache` (same sheet as the route cache — no new
+   spreadsheet needed)
+3. That's it — no GitHub secrets, no scheduled workflow, no Playwright
+   install step
+
+### A note on `utcOffset` / `isSupportDST`
+
+Lessen's login form includes two hidden fields that its own JavaScript
+fills in before submitting (`utcOffset`, `isSupportDST`). Since this app
+runs from Arizona, `lib/lessen/client.ts` hardcodes these to `420` and
+`false` (Arizona is UTC-7 with no daylight saving) — confirmed working
+against a real login. If you ever need this from a different timezone,
+these are the two values to change.
+
+### Testing locally
+
+```bash
+LESSEN_EMAIL=you@example.com LESSEN_PASSWORD=yourpassword node test-lessen-login.js
+```
+
+This standalone script (not part of the Next.js app — just a one-off
+verification tool) confirms the login flow still works before you deploy.

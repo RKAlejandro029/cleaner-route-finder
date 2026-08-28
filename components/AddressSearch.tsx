@@ -8,13 +8,20 @@ type Props = {
   onFind: (address: string) => void;
   busy: boolean;
   error: string | null;
+  prefillAddress?: string | null;
 };
 
-export default function AddressSearch({ routingProvider, onFind, busy, error }: Props) {
+export default function AddressSearch({ routingProvider, onFind, busy, error, prefillAddress }: Props) {
   const [value, setValue] = useState("");
   const [suggestions, setSuggestions] = useState<GeocodeSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Populated when the caller sets it (e.g. clicking a Lessen pin on the
+  // map). Intentionally a one-way sync — typing afterward is unaffected.
+  useEffect(() => {
+    if (prefillAddress) setValue(prefillAddress);
+  }, [prefillAddress]);
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);

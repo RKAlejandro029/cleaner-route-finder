@@ -9,12 +9,21 @@ import { stopLocation, stopLabel } from "@/lib/route-analysis/buildRoutes";
 
 const AZ_CENTER: [number, number] = [-111.65, 33.55]; // roughly Phoenix/Mesa area
 
+export type ExtraPin = {
+  id: string;
+  label: string;
+  location: GeoPoint;
+  color: string;
+};
+
 type Props = {
   routes: CleanerRoute[];
   newProperty: { location: GeoPoint; address: string } | null;
   previewGeometry?: GeoPoint[] | null;
   previewColor?: string;
   onMarkerDrag?: (location: GeoPoint) => void;
+  extraPins?: ExtraPin[];
+  onExtraPinClick?: (pin: ExtraPin) => void;
 };
 
 export default function RouteMap({
@@ -23,11 +32,14 @@ export default function RouteMap({
   previewGeometry,
   previewColor,
   onMarkerDrag,
+  extraPins,
+  onExtraPinClick,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef<maplibregl.Marker[]>([]);
   const newMarkerRef = useRef<maplibregl.Marker | null>(null);
+  const extraPinMarkersRef = useRef<maplibregl.Marker[]>([]);
   // Tracks every route-line source/layer ID currently on the map, so we
   // can remove ones that drop out of `routes` (e.g. isolating a single
   // cleaner) instead of leaving stale lines behind.
@@ -236,6 +248,36 @@ export default function RouteMap({
 
     map.flyTo({ center: [newProperty.location.lng, newProperty.location.lat], zoom: 12, duration: 400 });
   }, [newProperty]);
+
+  // Extra pins (e.g. Lessen tasks) — square markers, visually distinct
+  // from the round route-stop circles and the diamond new-property pin.
+  // Clicking one fires onExtraPinClick so the caller can prefill search.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    extraPinMarkersRef.current.forEach((m) => m.remove());
+    extraPinMarkersRef.current = [];
+
+    (extraPins ?? []).forEach((pin) => {
+      const el = document.createElement("div");
+      el.style.width = "20px";
+      el.style.height = "20px";
+      el.style.borderRadius = "4px";
+      el.style.background = pin.color;
+      el.style.border = "2px solid white";
+      el.style.boxShadow = "0 1px 3px rgba(0,0,0,0.4)";
+      el.style.cursor = "pointer";
+
+      const marker = new maplibregl.Marker({ element: el })
+        .setLngLat([pin.location.lng, pin.location.lat])
+        .setPopup(new maplibregl.Popup({ offset: 14 }).setText(pin.label))
+        .addTo(map);
+
+      el.addEventListener("click", () => onExtraPinClick?.(pin));
+      extraPinMarkersRef.current.push(marker);
+    });
+  }, [extraPins, onExtraPinClick]);
 
   return <div ref={containerRef} className="w-full h-full min-h-[320px] rounded-lg overflow-hidden" />;
 }
