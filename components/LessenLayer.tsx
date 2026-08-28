@@ -69,9 +69,6 @@ export default function LessenLayer({ onVisibleTasksChange }: Props) {
 
   return (
     <div>
-      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-        Lessen Dispatch Types
-      </p>
       <ul className="space-y-1">
         {TASK_TYPE_ORDER.map((id) => (
           <li key={id}>

@@ -220,75 +220,112 @@ export default function Home() {
       </header>
 
       <div className="flex-1 flex flex-col lg:flex-row min-h-0">
-        {/* Left navigation: date, search, and results all live here */}
-        <aside className="w-full lg:w-96 flex-shrink-0 border-b lg:border-b-0 lg:border-r border-gray-200 bg-white p-4 sm:p-6 space-y-4 overflow-y-auto">
-          <DayLoader onLoaded={handleDayLoaded} loadedDate={selectedDate} jobCount={jobCount} />
+        {/* Left navigation: date, search, and results all live here,
+            grouped into clear steps matching how the app is actually used */}
+        <aside className="w-full lg:w-96 flex-shrink-0 border-b lg:border-b-0 lg:border-r border-gray-200 bg-white p-4 sm:p-6 overflow-y-auto">
 
-          <LessenLayer onVisibleTasksChange={setVisibleLessenTasks} />
+          {/* STEP 1 — Load a day's schedule */}
+          <section>
+            <p className="text-xs font-semibold text-brand-700 uppercase tracking-wide mb-2">
+              1. Load a Date
+            </p>
+            <DayLoader onLoaded={handleDayLoaded} loadedDate={selectedDate} jobCount={jobCount} />
+
+            {selectedDate && jobCount === 0 && (
+              <p className="text-sm text-gray-500 mt-2">
+                No Launch27 bookings found for this date.
+              </p>
+            )}
+            {routesError && <p className="text-sm text-red-600 mt-2">{routesError}</p>}
+          </section>
 
           {selectedDate && hasBookingsForDate && (
-            <AddressSearch
-              routingProvider={routingProviderRef.current}
-              onFind={handleFind}
-              busy={finding}
-              error={findError}
-              prefillAddress={prefillAddress}
-            />
+            <>
+              {/* STEP 2 — Browse who's working, and where */}
+              <section className="border-t border-gray-200 mt-5 pt-5">
+                <p className="text-xs font-semibold text-brand-700 uppercase tracking-wide mb-2">
+                  2. Today's Cleaners
+                </p>
+
+                {loadingRoutes && <p className="text-sm text-gray-500">Loading routes…</p>}
+
+                {!loadingRoutes && cacheInfo && cacheInfo.total > 0 && (
+                  <p className="text-xs text-gray-400 mb-2">
+                    {cacheInfo.cached > 0
+                      ? `${cacheInfo.cached}/${cacheInfo.total} routes reused from cache (schedule unchanged)`
+                      : `${cacheInfo.total} routes freshly calculated`}
+                  </p>
+                )}
+
+                {!loadingRoutes && routes.length > 0 && (
+                  <CleanerList
+                    routes={routes}
+                    selectedTeamKey={selectedTeamKey}
+                    onToggle={handleToggleSelection}
+                  />
+                )}
+              </section>
+
+              {/* STEP 3 — Search a new property */}
+              <section className="border-t border-gray-200 mt-5 pt-5">
+                <p className="text-xs font-semibold text-brand-700 uppercase tracking-wide mb-2">
+                  3. Find Best Cleaner
+                </p>
+                <AddressSearch
+                  routingProvider={routingProviderRef.current}
+                  onFind={handleFind}
+                  busy={finding}
+                  error={findError}
+                  prefillAddress={prefillAddress}
+                />
+
+                {!loadingRoutes && !candidates && (
+                  <p className="text-sm text-gray-500 mt-2">
+                    Enter a new cleaning location above, or click a Lessen pin
+                    on the map below.
+                  </p>
+                )}
+              </section>
+
+              {/* STEP 4 — Results */}
+              {candidates && (
+                <section className="border-t border-gray-200 mt-5 pt-5 space-y-3">
+                  <p className="text-xs font-semibold text-brand-700 uppercase tracking-wide">
+                    4. Results
+                  </p>
+
+                  {addressAdjusted && (
+                    <p className="text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-2">
+                      Location adjusted. Recalculated automatically.
+                    </p>
+                  )}
+
+                  {bestCandidate && (
+                    <BestFitCard
+                      candidate={bestCandidate}
+                      onAddTemporary={() => handleAddTemporary(bestCandidate)}
+                      adding={addingTemp}
+                    />
+                  )}
+
+                  <CleanerResults
+                    candidates={otherCandidates}
+                    onSelect={handleToggleSelection}
+                    selectedTeamKey={selectedTeamKey}
+                  />
+                </section>
+              )}
+            </>
           )}
 
-          {selectedDate && jobCount === 0 && (
-            <p className="text-sm text-gray-500">
-              No Launch27 bookings found for this date.
+          {/* Optional overlay — kept visually separate since it's not part
+              of the core load → browse → search flow above */}
+          <section className="border-t border-gray-200 mt-5 pt-5">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
+              Optional: Dispatch Overlays
             </p>
-          )}
-
-          {routesError && <p className="text-sm text-red-600">{routesError}</p>}
-
-          {loadingRoutes && <p className="text-sm text-gray-500">Loading routes…</p>}
-
-          {!loadingRoutes && cacheInfo && cacheInfo.total > 0 && (
-            <p className="text-xs text-gray-400">
-              {cacheInfo.cached > 0
-                ? `${cacheInfo.cached}/${cacheInfo.total} routes reused from cache (schedule unchanged)`
-                : `${cacheInfo.total} routes freshly calculated`}
-            </p>
-          )}
-
-          {!loadingRoutes && routes.length > 0 && (
-            <CleanerList
-              routes={routes}
-              selectedTeamKey={selectedTeamKey}
-              onToggle={handleToggleSelection}
-            />
-          )}
-
-          {selectedDate && hasBookingsForDate && !loadingRoutes && !candidates && (
-            <p className="text-sm text-gray-500">
-              Enter a new cleaning location above and click Find Best Cleaner.
-            </p>
-          )}
-
-          {addressAdjusted && (
-            <p className="text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-2">
-              Location adjusted. Recalculated automatically.
-            </p>
-          )}
-
-          {bestCandidate && (
-            <BestFitCard
-              candidate={bestCandidate}
-              onAddTemporary={() => handleAddTemporary(bestCandidate)}
-              adding={addingTemp}
-            />
-          )}
-
-          {candidates && (
-            <CleanerResults
-              candidates={otherCandidates}
-              onSelect={handleToggleSelection}
-              selectedTeamKey={selectedTeamKey}
-            />
-          )}
+            <LessenLayer onVisibleTasksChange={setVisibleLessenTasks} />
+          </section>
         </aside>
 
         {/* Map fills the remaining space — always rendered, even before

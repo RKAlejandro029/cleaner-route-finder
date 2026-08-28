@@ -13,9 +13,6 @@ export default function CleanerList({ routes, selectedTeamKey, onToggle }: Props
 
   return (
     <div>
-      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-        Cleaners Today
-      </p>
       <ul className="space-y-1">
         {routes.map((route) => {
           const isSelected = selectedTeamKey === route.teamKey;
