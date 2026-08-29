@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { LessenTask } from "@/types/lessen";
 import { colorForTaskType } from "@/lib/lessen/taskTypeColors";
+import Spinner from "@/components/Spinner";
 
 const TASK_TYPE_ORDER = [39, 49, 45, 46, 50, 95, 92];
 const TASK_TYPE_FALLBACK_LABELS: Record<number, string> = {
@@ -94,7 +95,12 @@ export default function LessenLayer({ onVisibleTasksChange }: Props) {
         ))}
       </ul>
 
-      {loading && <p className="text-xs text-gray-400 mt-1">Loading Lessen tasks…</p>}
+      {loading && (
+        <p className="text-xs text-gray-400 mt-1 flex items-center gap-1.5">
+          <Spinner className="w-3.5 h-3.5" />
+          Loading Lessen tasks (may take a few seconds)…
+        </p>
+      )}
       {error && <p className="text-xs text-red-600 mt-1">{error}</p>}
       {tasks && (
         <p className="text-xs text-gray-400 mt-1">

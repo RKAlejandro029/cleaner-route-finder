@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Booking } from "@/types/booking";
+import Spinner from "@/components/Spinner";
 
 type Props = {
   onLoaded: (date: string, bookings: Booking[]) => void;
@@ -59,8 +60,9 @@ export default function DayLoader({ onLoaded, loadedDate, jobCount }: Props) {
         <button
           onClick={handleLoad}
           disabled={busy || !date}
-          className="min-h-[44px] px-5 py-2.5 rounded-lg bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700 disabled:opacity-50 whitespace-nowrap"
+          className="min-h-[44px] px-5 py-2.5 rounded-lg bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700 disabled:opacity-50 whitespace-nowrap flex items-center justify-center gap-2"
         >
+          {busy && <Spinner className="w-4 h-4" />}
           {busy ? "Loading…" : "Load Day"}
         </button>
       </div>

@@ -2,6 +2,7 @@
 
 import { InsertionCandidate } from "@/types/recommendation";
 import { formatMiles, formatDuration } from "@/lib/route-analysis/formatMetrics";
+import Spinner from "@/components/Spinner";
 
 type Props = {
   candidate: InsertionCandidate;
@@ -37,8 +38,9 @@ export default function BestFitCard({ candidate, onAddTemporary, adding }: Props
       <button
         onClick={onAddTemporary}
         disabled={adding}
-        className="mt-3 w-full min-h-[44px] px-4 py-2.5 rounded-lg bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700 disabled:opacity-50"
+        className="mt-3 w-full min-h-[44px] px-4 py-2.5 rounded-lg bg-brand-600 text-white text-sm font-semibold hover:bg-brand-700 disabled:opacity-50 flex items-center justify-center gap-2"
       >
+        {adding && <Spinner className="w-4 h-4" />}
         {adding ? "Adding…" : "Add to Temporary Route"}
       </button>
     </div>

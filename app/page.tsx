@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import DayLoader from "@/components/DayLoader";
 import AddressSearch from "@/components/AddressSearch";
 import RouteMap, { ExtraPin } from "@/components/RouteMap";
+import Spinner from "@/components/Spinner";
 import BestFitCard from "@/components/BestFitCard";
 import CleanerResults from "@/components/CleanerResults";
 import CleanerList from "@/components/CleanerList";
@@ -247,7 +248,12 @@ export default function Home() {
                   2. Today's Cleaners
                 </p>
 
-                {loadingRoutes && <p className="text-sm text-gray-500">Loading routes…</p>}
+                {loadingRoutes && (
+                  <p className="text-sm text-gray-500 flex items-center gap-2">
+                    <Spinner className="w-4 h-4" />
+                    Building routes for this date…
+                  </p>
+                )}
 
                 {!loadingRoutes && cacheInfo && cacheInfo.total > 0 && (
                   <p className="text-xs text-gray-400 mb-2">
@@ -330,7 +336,7 @@ export default function Home() {
 
         {/* Map fills the remaining space — always rendered, even before
             any date is loaded, so the app opens on Arizona immediately */}
-        <div className="flex-1 min-h-[320px] p-4 sm:p-6">
+        <div className="flex-1 min-h-[320px] p-4 sm:p-6 relative">
           <RouteMap
             routes={selectedDate && hasBookingsForDate ? visibleRoutes : []}
             newProperty={newLocation && newAddress ? { location: newLocation, address: newAddress } : null}
@@ -340,6 +346,15 @@ export default function Home() {
             extraPins={extraPins}
             onExtraPinClick={handleExtraPinClick}
           />
+
+          {(loadingRoutes || finding) && (
+            <div className="absolute inset-4 sm:inset-6 flex items-start justify-center pointer-events-none">
+              <div className="mt-4 bg-white/95 backdrop-blur rounded-lg shadow-md px-4 py-2 flex items-center gap-2 text-sm text-gray-700">
+                <Spinner className="w-4 h-4 text-brand-600" />
+                {loadingRoutes ? "Building routes…" : "Finding best fit…"}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </main>
