@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import DateRangeLoader from "@/components/DateRangeLoader";
+import DatePickerLoader from "@/components/DatePickerLoader";
 import AddressSearch from "@/components/AddressSearch";
 import RouteMap, { ExtraPin } from "@/components/RouteMap";
 import Spinner from "@/components/Spinner";
@@ -50,7 +50,7 @@ export default function Home() {
   const [visibleLessenTasks, setVisibleLessenTasks] = useState<LessenTask[]>([]);
   const [prefillAddress, setPrefillAddress] = useState<string | null>(null);
 
-  // Called once DateRangeLoader has already fetched a range of bookings
+  // Called once DatePickerLoader has already fetched the selected dates'
   // from Launch27 and the user picked one date within it.
   async function handleDayLoaded(date: string, bookings: Booking[]) {
     setSelectedDate(date);
@@ -228,7 +228,7 @@ export default function Home() {
             <p className="text-xs font-semibold text-brand-700 uppercase tracking-wide mb-2">
               1. Load Schedule
             </p>
-            <DateRangeLoader onDateSelected={handleDayLoaded} activeDate={selectedDate} jobCount={jobCount} />
+            <DatePickerLoader onDateSelected={handleDayLoaded} activeDate={selectedDate} jobCount={jobCount} />
 
             {selectedDate && jobCount === 0 && (
               <p className="text-sm text-gray-500 mt-2">
