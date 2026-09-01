@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import DayLoader from "@/components/DayLoader";
+import DateRangeLoader from "@/components/DateRangeLoader";
 import AddressSearch from "@/components/AddressSearch";
 import RouteMap, { ExtraPin } from "@/components/RouteMap";
 import Spinner from "@/components/Spinner";
@@ -50,10 +50,8 @@ export default function Home() {
   const [visibleLessenTasks, setVisibleLessenTasks] = useState<LessenTask[]>([]);
   const [prefillAddress, setPrefillAddress] = useState<string | null>(null);
 
-  // Called once DayLoader has already fetched just this date's bookings
-  // from Launch27 (from=to=date — the only reliably-filtered query shape).
-  // `bookings` may contain multiple rows per job (one per assigned
-  // cleaner) — that's intentional, see lib/launch27/mapBooking.ts.
+  // Called once DateRangeLoader has already fetched a range of bookings
+  // from Launch27 and the user picked one date within it.
   async function handleDayLoaded(date: string, bookings: Booking[]) {
     setSelectedDate(date);
     setJobCount(new Set(bookings.map((b) => b.bookingId)).size);
@@ -228,9 +226,9 @@ export default function Home() {
           {/* STEP 1 — Load a day's schedule */}
           <section>
             <p className="text-xs font-semibold text-brand-700 uppercase tracking-wide mb-2">
-              1. Load a Date
+              1. Load Schedule
             </p>
-            <DayLoader onLoaded={handleDayLoaded} loadedDate={selectedDate} jobCount={jobCount} />
+            <DateRangeLoader onDateSelected={handleDayLoaded} activeDate={selectedDate} jobCount={jobCount} />
 
             {selectedDate && jobCount === 0 && (
               <p className="text-sm text-gray-500 mt-2">

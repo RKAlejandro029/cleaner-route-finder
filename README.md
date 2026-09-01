@@ -113,7 +113,10 @@ routes. The browser never sees any of them.
 
 ## Using it
 
-1. Pick a date and click **Load Day** (fetches just that day from Launch27)
+1. Pick a From/To date range and click **Load Days** (one Launch27 call
+   for the whole range — pick the same date twice for just one day, like
+   before). Then use the dropdown that appears to switch between any
+   date in that range instantly — no extra Launch27 calls per date
 2. Type or select a new Arizona address
 3. Click **Find Best Cleaner**
 4. Review the best-fit route and alternatives, drag the new-property marker if
